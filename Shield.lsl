@@ -26,6 +26,8 @@
 // 2026-Aug-17 Add texture menu management        //
 // 2026-Aug-18 Support for one and two sided      //
 // 2026-Aug-19 Use linkset datastore for config   //
+// 2026-Aug-24 Support Position & Rotation menus  //
+// 2026-Aug-31 Support for Media on a Prim TV     //
 //                                                //
 ////////////////////////////////////////////////////
 
@@ -74,6 +76,7 @@ string  front_texture;
 string  back_texture;
 string  linksetValue;
 string  menuMessage;
+string  selected_dir  = "";
 string  shape = "Box";
 
 // Linkset Data Keys
@@ -178,6 +181,17 @@ raiseShield() {
     }
     shieldStatus = TRUE;
     llSetTimerEvent(5.0);
+}
+
+move_shield(string dir, float amt) {
+    if (dir == "X") {
+        curr_position.x += amt;
+    } else if (dir == "Y") {
+        curr_position.y += amt;
+    } else if (dir == "Z") {
+        curr_position.z += amt;
+    }
+    llSetRegionPos(curr_position);
 }
 
 string getShieldSlurl() {
@@ -401,7 +415,22 @@ displayPosMenu() {
     menuMessage += "\n\tX: " + (string) ( curr_position.x );
     menuMessage += "\n\tY: " + (string) ( curr_position.y );
     menuMessage += "\n\tZ: " + (string) ( curr_position.z );
-    pos_menu = ["X", "Y", "Z", "+0.1m", "-0.1m", "+1m", "-1m", "+5m", "-5m"];
+    if (selected_dir == "") {
+        menuMessage += "\nSelect a direction to position\n";
+        pos_menu = ["X", "Y", "Z"];
+    } else {
+        menuMessage += "\nSelected direction: "  + selected_dir;
+        menuMessage += "\nSelect an amount (in meters) to move in the " + selected_dir + " direction";
+        menuMessage += " or change direction\n";
+        if (selected_dir == "X") {
+            pos_menu = ["X ✓", "Y", "Z"];
+        } else if (selected_dir == "Y") {
+            pos_menu = ["X", "Y ✓", "Z"];
+        } else if (selected_dir == "Z") {
+            pos_menu = ["X", "Y", "Z ✓"];
+        }
+        pos_menu += ["+0.1m", "-0.1m", "+1m", "-1m", "+5m", "-5m"];
+    }
     pos_menu += ["BACK", "RESTORE", "EXIT"];
     ShowMenu(menuMessage, pos_menu);
 }
@@ -1188,18 +1217,27 @@ state menu
 state pos
 {
     state_entry() {
+        vector orig_position = curr_position;
         displayPosMenu();
     }
 
     listen(integer channel, string name, key id, string message) {
-        if (message == "24x12") {
-        } else if (message == "32x16") {
+        if ((message == "X") || (message == "Y") || (message == "Z")) {
+            selected_dir = message;
+        } else if (message == "+0.1m") {
+            move_shield(selected_dir, 0.1);
+        } else if (message == "-0.1m") {
+            move_shield(selected_dir, -0.1);
+        } else if (message == "+1m") {
+            move_shield(selected_dir, 1.0);
+        } else if (message == "-1m") {
+            move_shield(selected_dir, -1.0);
+        } else if (message == "+5m") {
+            move_shield(selected_dir, 5.0);
+        } else if (message == "-5m") {
+            move_shield(selected_dir, -5.0);
         } else if (message == "RESTORE") {
-            linksetValue = llLinksetDataRead(ORIGSIZE_LSD_KEY);
-            if (linksetValue != "") {
-            } else {
-                linksetDataWrite(owner, ORIGSIZE_LSD_KEY, (string)prim_size, "Original Shield Size");
-            }
+            llSetRegionPos(orig_position);
         } else if (message == "BACK") {
             state menu;
         } else if (message == "EXIT") {
@@ -1209,10 +1247,6 @@ state pos
             } else {
                 state cloaked;
             }
-        }
-        if (shape == "Tube") {
-            // Tube size reverses X & Y, Z is same as Y
-            prim_size.y = prim_size.x;
         }
         // Re-send the dialog to keep the menu open
         displayPosMenu();
