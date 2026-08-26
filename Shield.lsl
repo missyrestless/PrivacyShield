@@ -44,6 +44,7 @@ integer warnHandle;
 integer dialogChannel;
 integer pageNumber    = 1;   // Dialog Menu page number
 integer defaultState  = TRUE;
+integer isTransparent = FALSE;
 integer selected_face = -1;
 integer side_one      = 0;   // Face number for front of shield
 integer side_two      = 5;   // Face number for back of shield
@@ -51,11 +52,6 @@ integer listenChannel = 0;   // Channel for chat and gestures
 integer objChannel;          // Channel for communication between screens, based on owner
 integer shieldStatus;        // TRUE if screen active, FALSE if screen is transparent
 integer total_faces;         // Number of textured faces
-integer rcv_lower;           // Boolean indicating recieved lower screen message
-integer rcv_raise;           // Boolean indicating recieved raise screen message
-integer rcv_state;           // Boolean indicating recieved state message
-integer rcv_sided;           // Boolean indicating recieved sided message
-integer isTransparent = FALSE;
 
 key     owner = NULL_KEY;
 key     tcher = NULL_KEY;
@@ -654,21 +650,15 @@ default {
         string cmd = llToLower(message);
         if (channel == listenChannel) {
             if (cmd == "shields down") {
-                if (rcv_lower) return;
-                rcv_lower = TRUE;
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Down");
                 lowerShield();
                 state cloaked;
             } else if (cmd == "shields up") {
-                if (rcv_raise) return;
-                rcv_raise = TRUE;
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Up");
                 raiseShield();
             } else if (cmd == "shields info") {
-                if (rcv_state) return;
-                rcv_state = TRUE;
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Info");
                 stateShield();
@@ -676,26 +666,16 @@ default {
         } else if (channel == objChannel) {
             // Don't resend the message if we are receiving a message on this channel
             if (cmd == "shields down") {
-                if (rcv_lower) return;
-                rcv_lower = TRUE;
                 lowerShield();
                 state cloaked;
             } else if (cmd == "shields up") {
-                if (rcv_raise) return;
-                rcv_raise = TRUE;
                 raiseShield();
             } else if (cmd == "shields info") {
-                if (rcv_state) return;
-                rcv_state = TRUE;
                 stateShield();
             } else if (cmd == "shields one") {
-                if (rcv_sided) return;
-                rcv_sided = TRUE;
                 DOUBLE = FALSE;
                 sidedShield();
             } else if (cmd == "shields two") {
-                if (rcv_sided) return;
-                rcv_sided = TRUE;
                 DOUBLE = TRUE;
                 sidedShield();
             } else if (cmd == "group") {
@@ -728,10 +708,6 @@ default {
     }
 
     timer() {
-        rcv_lower = FALSE;
-        rcv_raise = FALSE;
-        rcv_state = FALSE;
-        rcv_sided = FALSE;
         llSetTimerEvent(0.0);
     }
 
@@ -867,9 +843,14 @@ default {
     }
 
     changed(integer change) {
-         if (change & (CHANGED_OWNER | CHANGED_INVENTORY)) {
-             llResetScript();
-         }
+        // Check if the change event was caused by an owner change
+        if (change & CHANGED_OWNER) {
+            // Reset/wipe all key-value pairs in the linkset data store
+            llLinksetDataReset();
+            llResetScript();
+        } else if (change & CHANGED_INVENTORY) {
+            llResetScript();
+        }
     }
 }
 
@@ -887,21 +868,15 @@ state cloaked {
         string cmd = llToLower(message);
         if (channel == listenChannel) {
             if (cmd == "shields down") {
-                if (rcv_lower) return;
-                rcv_lower = TRUE;
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Down");
                 lowerShield();
             } else if (cmd == "shields up") {
-                if (rcv_raise) return;
-                rcv_raise = TRUE;
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Up");
                 raiseShield();
                 state default;
             } else if (cmd == "shields info") {
-                if (rcv_state) return;
-                rcv_state = TRUE;
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Info");
                 stateShield();
@@ -909,26 +884,16 @@ state cloaked {
         } else if (channel == objChannel) {
             // Don't resend the message if we are receiving a message on this channel
             if (cmd == "shields down") {
-                if (rcv_lower) return;
-                rcv_lower = TRUE;
                 lowerShield();
             } else if (cmd == "shields up") {
-                if (rcv_raise) return;
-                rcv_raise = TRUE;
                 raiseShield();
                 state default;
             } else if (cmd == "shields info") {
-                if (rcv_state) return;
-                rcv_state = TRUE;
                 stateShield();
             } else if (cmd == "shields one") {
-                if (rcv_sided) return;
-                rcv_sided = TRUE;
                 DOUBLE = FALSE;
                 sidedShield();
             } else if (cmd == "shields two") {
-                if (rcv_sided) return;
-                rcv_sided = TRUE;
                 DOUBLE = TRUE;
                 sidedShield();
             } else if (cmd == "group") {
@@ -956,10 +921,6 @@ state cloaked {
     }
 
     timer() {
-        rcv_lower = FALSE;
-        rcv_raise = FALSE;
-        rcv_state = FALSE;
-        rcv_sided = FALSE;
         llSetTimerEvent(0.0);
     }
 
@@ -1039,7 +1000,6 @@ state menu
 
     listen(integer channel, string name, key id, string message) {
         if (message == "UP") {
-            rcv_raise = TRUE;
             if (ALL) {
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Up");
@@ -1047,7 +1007,6 @@ state menu
             raiseShield();
             defaultState = TRUE;
         } else if (message == "DOWN") {
-            rcv_lower = TRUE;
             if (ALL) {
                 // Send the message to other objects in region with same owner
                 llRegionSay(objChannel, "Shields Down");
@@ -1055,7 +1014,6 @@ state menu
             lowerShield();
             defaultState = FALSE;
         } else if (message == "INFO") {
-            rcv_state = TRUE;
             if (ALL) {
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Info");
@@ -1063,7 +1021,6 @@ state menu
             stateShield();
         } else if (message == "ONE SIDE") {
             DOUBLE = FALSE;
-            rcv_sided = TRUE;
             if (ALL) {
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields One");
@@ -1071,7 +1028,6 @@ state menu
             sidedShield();
         } else if (message == "TWO SIDES") {
             DOUBLE = TRUE;
-            rcv_sided = TRUE;
             if (ALL) {
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Two");
@@ -1146,7 +1102,6 @@ state settings
 
     listen(integer channel, string name, key id, string message) {
         if (message == "UP") {
-            rcv_raise = TRUE;
             if (ALL) {
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Up");
@@ -1154,7 +1109,6 @@ state settings
             raiseShield();
             defaultState = TRUE;
         } else if (message == "DOWN") {
-            rcv_lower = TRUE;
             if (ALL) {
                 // Send the message to other objects in region with same owner
                 llRegionSay(objChannel, "Shields Down");
@@ -1162,7 +1116,6 @@ state settings
             lowerShield();
             defaultState = FALSE;
         } else if (message == "INFO") {
-            rcv_state = TRUE;
             if (ALL) {
                 // Send the message to other objects in region with same owner listening on this channel
                 llRegionSay(objChannel, "Shields Info");
