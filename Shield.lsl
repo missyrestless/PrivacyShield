@@ -40,7 +40,7 @@ integer TOUCH   = FALSE;     // Set to TRUE to enable touch toggles, FALSE to di
 integer listenerID;          // Not yet used
 integer objListenID;         // Not yet used
 integer dialogHandle;        // Dialog Menu listener handle, channel, boolean
-integer listenHandle;
+integer warnHandle;
 integer dialogChannel;
 integer pageNumber    = 1;   // Dialog Menu page number
 integer defaultState  = TRUE;
@@ -640,8 +640,9 @@ default {
         // Compute a large negative channel number based on the object owner
         // All screens owned by the same owner will use the same channel
         objChannel = 0x80000000 | (integer) ( "0x" + (string) owner );
-        // TODO: Filter listen for group members
+        llListenRemove(listenerID);
         listenerID = llListen(listenChannel, "", owner, "");
+        llListenRemove(objListenID);
         objListenID = llListen(objChannel, "", NULL_KEY, "");
         // Compute a negative communications channel based on prim UUID
         dialogChannel = 0x80000000 | (integer) ( "0x" + (string) llGetKey() );
@@ -876,7 +877,9 @@ state cloaked {
     state_entry() {
         defaultState = FALSE;
         tcher = NULL_KEY;
+        llListenRemove(listenerID);
         listenerID = llListen(listenChannel, "", owner, "");
+        llListenRemove(objListenID);
         objListenID = llListen(objChannel, "", NULL_KEY, "");
     }
 
@@ -1404,8 +1407,8 @@ state warn
 {
     state_entry() {
         integer warnChannel = -999999;
-        llListenRemove(listenHandle);
-        listenHandle = llListen(warnChannel, "", tcher, "");
+        llListenRemove(warnHandle);
+        warnHandle = llListen(warnChannel, "", tcher, "");
 
         llDialog(tcher, "\nSelect a face to texture first\n", ["OK"], warnChannel);
         llSetTimerEvent(30.0); // 30-second timer
@@ -1413,13 +1416,13 @@ state warn
 
     listen(integer channel, string name, key id, string message) {
         llSetTimerEvent(0.0);       // Stop timer
-        llListenRemove(listenHandle); // Remove listener
+        llListenRemove(warnHandle); // Remove listener
         state text;
     }
 
     timer() {
         llSetTimerEvent(0.0);       // Stop timer
-        llListenRemove(listenHandle); // Remove listener
+        llListenRemove(warnHandle); // Remove listener
         state text;
     }
 }
