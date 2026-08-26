@@ -913,9 +913,14 @@ default {
     }
 
     changed(integer change) {
-         if (change & (CHANGED_OWNER | CHANGED_INVENTORY)) {
-             llResetScript();
-         }
+        // Check if the change event was caused by an owner change
+        if (change & CHANGED_OWNER) {
+            // Reset/wipe all key-value pairs in the linkset data store
+            llLinksetDataReset();
+            llResetScript();
+        } else if (change & CHANGED_INVENTORY) {
+            llResetScript();
+        }
     }
 }
 
