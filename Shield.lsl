@@ -26,7 +26,8 @@
 // 2026-Aug-17 Add texture menu management        //
 // 2026-Aug-18 Support for one and two sided      //
 // 2026-Aug-19 Use linkset datastore for config   //
-// 2026-Aug-24 Support Position & Rotation menus  //
+// 2026-Aug-27 Support for texturing all shields  //
+// 2026-Aug-29 Support Position & Rotation menus  //
 // 2026-Aug-31 Support for Media on a Prim TV     //
 //                                                //
 ////////////////////////////////////////////////////
@@ -66,8 +67,8 @@ float   def_size_y = -1.0;
 vector  orig_pos   = ZERO_VECTOR;
 vector  orig_size  = ZERO_VECTOR;
 vector  prim_size  = ZERO_VECTOR;
-vector  curr_position;
 string  BLANK      = "5b53359e-59dd-d8a2-04c3-9e65134da47a";
+vector  curr_position;
 string  HomePage   = "https://www.youtube.com/@missyrestless/playlists";
 string  front_texture;
 string  back_texture;
