@@ -497,14 +497,27 @@ displayTextMenu() {
     // Populate the inventory textures menu entries
     text_menu = get_Textures();
     if (text_menu) {
-        menuMessage += "\nTexture THIS SHIELD ONLY\n";
         if (selected_face == -1) {
             menuMessage += "\nSelect a face to retexture\n";
         } else {
+            if (ALL) {
+                menuMessage += "\nTexture ALL SHIELDS IN REGION\n";
+                menuMessage += "\nSOLO = Apply selected texture to only this shield";
+            } else {
+                menuMessage += "\nTexture THIS SHIELD ONLY\n";
+                menuMessage += "\nALL = Apply selected texture to all shields";
+            }
+            menuMessage += "\nFLIP HORIZ = Flip texture horizontally";
+            menuMessage += "\nFLIP VERT  = Flip texture vertically\n";
             menuMessage += "\nCurrent texture: " + llGetTexture(selected_face) + "\n";
             menuMessage += "\nSelect the texture to use on face " + (string)selected_face + "\n";
             face_menu = ["BACK", "RESTORE", "EXIT"];
-            face_menu += ["FLIP HORIZONTAL", "FLIP VERTICAL"];
+            if (ALL) {
+                face_menu += ["SOLO"];
+            } else {
+                face_menu += ["ALL"];
+            }
+            face_menu += ["FLIP HORIZ", "FLIP VERT"];
             if (isTransparent) {
                 face_menu += ["OPAQUE"];
             } else {
@@ -659,6 +672,69 @@ integer linksetDataWrite(key id, string lsdKey, string value, string cfg) {
     return returnCode;
 }
 
+processMessage(integer chn, string msg) {
+    string cmd = llToLower(msg);
+    if (chn == listenChannel) {
+        if (cmd == "shields down") {
+            // Send the message to other objects in region with same owner listening on this channel
+            llRegionSay(objChannel, "Shields Down");
+            lowerShield();
+        } else if (cmd == "shields up") {
+            // Send the message to other objects in region with same owner listening on this channel
+            llRegionSay(objChannel, "Shields Up");
+            raiseShield();
+        } else if (cmd == "shields info") {
+            // Send the message to other objects in region with same owner listening on this channel
+            llRegionSay(objChannel, "Shields Info");
+            stateShield();
+        }
+    } else if (chn == objChannel) {
+        // Don't resend the message if we are receiving a message on this channel
+        if (cmd == "shields down") {
+            lowerShield();
+        } else if (cmd == "shields up") {
+            raiseShield();
+        } else if (cmd == "shields info") {
+            stateShield();
+        } else if (cmd == "shields one") {
+            DOUBLE = FALSE;
+            sidedShield();
+        } else if (cmd == "shields two") {
+            DOUBLE = TRUE;
+            sidedShield();
+        } else if (cmd == "group") {
+            GROUP = TRUE;
+            linksetDataWrite(NULL_KEY, GROUP_LSD_KEY, (string)GROUP, "Group Access");
+        } else if (cmd == "owner") {
+            GROUP = FALSE;
+            linksetDataWrite(NULL_KEY, GROUP_LSD_KEY, (string)GROUP, "Group Access");
+        } else if (cmd == "flash off") {
+            FLASH = FALSE;
+        } else if (cmd == "flash on") {
+            FLASH = TRUE;
+        } else if (cmd == "phantom") {
+            SOLID = FALSE;
+            llSetStatus(STATUS_PHANTOM, TRUE);
+        } else if (cmd == "solid") {
+            SOLID = TRUE;
+            llSetStatus(STATUS_PHANTOM, FALSE);
+        } else if (cmd == "touch off") {
+            TOUCH = FALSE;
+        } else if (cmd == "touch on") {
+            TOUCH = TRUE;
+        } else if (llJsonValueType(msg, []) != JSON_INVALID) {
+            string txt = llJsonGetValue(msg, ["texture"]);
+            string fce = llJsonGetValue(msg, ["face"]);
+            if (llGetInventoryType(txt) == INVENTORY_TEXTURE) {
+                llSetTexture(txt, (integer)fce);
+            } else {
+                llRegionSayTo(tcher, 0, "The texture is missing or not a texture: " + txt);
+            }
+        }
+    }
+}
+
+
 default {
     state_entry() {
         owner        = llGetOwner();
@@ -717,58 +793,11 @@ default {
     }
 
     listen(integer channel, string name, key id, string message) {
+        processMessage(channel, message);
         string cmd = llToLower(message);
-        if (channel == listenChannel) {
-            if (cmd == "shields down") {
-                // Send the message to other objects in region with same owner listening on this channel
-                llRegionSay(objChannel, "Shields Down");
-                lowerShield();
-                state cloaked;
-            } else if (cmd == "shields up") {
-                // Send the message to other objects in region with same owner listening on this channel
-                llRegionSay(objChannel, "Shields Up");
-                raiseShield();
-            } else if (cmd == "shields info") {
-                // Send the message to other objects in region with same owner listening on this channel
-                llRegionSay(objChannel, "Shields Info");
-                stateShield();
-            }
-        } else if (channel == objChannel) {
-            // Don't resend the message if we are receiving a message on this channel
-            if (cmd == "shields down") {
-                lowerShield();
-                state cloaked;
-            } else if (cmd == "shields up") {
-                raiseShield();
-            } else if (cmd == "shields info") {
-                stateShield();
-            } else if (cmd == "shields one") {
-                DOUBLE = FALSE;
-                sidedShield();
-            } else if (cmd == "shields two") {
-                DOUBLE = TRUE;
-                sidedShield();
-            } else if (cmd == "group") {
-                GROUP = TRUE;
-                linksetDataWrite(NULL_KEY, GROUP_LSD_KEY, (string)GROUP, "Group Access");
-            } else if (cmd == "owner") {
-                GROUP = FALSE;
-                linksetDataWrite(NULL_KEY, GROUP_LSD_KEY, (string)GROUP, "Group Access");
-            } else if (cmd == "flash off") {
-                FLASH = FALSE;
-            } else if (cmd == "flash on") {
-                FLASH = TRUE;
-            } else if (cmd == "phantom") {
-                SOLID = FALSE;
-                llSetStatus(STATUS_PHANTOM, TRUE);
-            } else if (cmd == "solid") {
-                SOLID = TRUE;
-                llSetStatus(STATUS_PHANTOM, FALSE);
-            } else if (cmd == "touch off") {
-                TOUCH = FALSE;
-            } else if (cmd == "touch on") {
-                TOUCH = TRUE;
-            }
+
+        if (cmd == "shields down") {
+            state cloaked;
         }
     }
 
@@ -935,58 +964,11 @@ state cloaked {
     }
 
     listen(integer channel, string name, key id, string message) {
+        processMessage(channel, message);
+
         string cmd = llToLower(message);
-        if (channel == listenChannel) {
-            if (cmd == "shields down") {
-                // Send the message to other objects in region with same owner listening on this channel
-                llRegionSay(objChannel, "Shields Down");
-                lowerShield();
-            } else if (cmd == "shields up") {
-                // Send the message to other objects in region with same owner listening on this channel
-                llRegionSay(objChannel, "Shields Up");
-                raiseShield();
-                state default;
-            } else if (cmd == "shields info") {
-                // Send the message to other objects in region with same owner listening on this channel
-                llRegionSay(objChannel, "Shields Info");
-                stateShield();
-            }
-        } else if (channel == objChannel) {
-            // Don't resend the message if we are receiving a message on this channel
-            if (cmd == "shields down") {
-                lowerShield();
-            } else if (cmd == "shields up") {
-                raiseShield();
-                state default;
-            } else if (cmd == "shields info") {
-                stateShield();
-            } else if (cmd == "shields one") {
-                DOUBLE = FALSE;
-                sidedShield();
-            } else if (cmd == "shields two") {
-                DOUBLE = TRUE;
-                sidedShield();
-            } else if (cmd == "group") {
-                GROUP = TRUE;
-                linksetDataWrite(NULL_KEY, GROUP_LSD_KEY, (string)GROUP, "Group Access");
-            } else if (cmd == "owner") {
-                GROUP = FALSE;
-                linksetDataWrite(NULL_KEY, GROUP_LSD_KEY, (string)GROUP, "Group Access");
-            } else if (cmd == "flash off") {
-                FLASH = FALSE;
-            } else if (cmd == "flash on") {
-                FLASH = TRUE;
-            } else if (cmd == "phantom") {
-                SOLID = FALSE;
-                llSetStatus(STATUS_PHANTOM, TRUE);
-            } else if (cmd == "solid") {
-                SOLID = TRUE;
-                llSetStatus(STATUS_PHANTOM, FALSE);
-            } else if (cmd == "touch off") {
-                TOUCH = FALSE;
-            } else if (cmd == "touch on") {
-                TOUCH = TRUE;
-            }
+        if (cmd == "shields up") {
+            state default;
         }
     }
 
@@ -1500,11 +1482,17 @@ state text
             selected_face = (integer)(llGetSubString(message, 5, -1));
             llSetPrimitiveParams([PRIM_GLOW, ALL_SIDES, 0.0]);
             llSetPrimitiveParams([PRIM_GLOW, selected_face, 0.3]);
-        } else if (message == "FLIP HORIZONTAL") {
+        } else if (message == "ALL") {
+            ALL = TRUE;
+            linksetDataWrite(tcher, SOLO_LSD_KEY, (string)ALL, "All or Solo Shield");
+        } else if (message == "SOLO") {
+            ALL = FALSE;
+            linksetDataWrite(tcher, SOLO_LSD_KEY, (string)ALL, "All or Solo Shield");
+        } else if (message == "FLIP HORIZ") {
             // Flips the texture horizontally on selected face, keeping vertical scale
             scale_vector = llGetTextureScale(selected_face);
             llScaleTexture(-(scale_vector.x), scale_vector.y, selected_face);
-        } else if (message == "FLIP VERTICAL") {
+        } else if (message == "FLIP VERT") {
             // Flips the texture vertically on selected face, keeping horizontal scale
             scale_vector = llGetTextureScale(selected_face);
             llScaleTexture(scale_vector.x, -(scale_vector.y), selected_face);
@@ -1554,6 +1542,10 @@ state text
                     state warn;
                 } else {
                     llSetTexture(message, selected_face);
+                    if (ALL) {
+                        // Pack the 2 key/value pairs as a JSON string
+                        llRegionSay(objChannel, llList2Json(JSON_OBJECT, ["texture", message, "face", (string)selected_face]));
+                    }
                 }
             } else {
                 llRegionSayTo(tcher, 0, "The texture is missing or not a texture: " + message);
