@@ -139,7 +139,6 @@ lowerShield() {
     llSetAlpha(0.0, ALL_SIDES);
     llSetStatus(STATUS_PHANTOM, TRUE);
     shieldStatus = FALSE;
-    llSetTimerEvent(5.0);
 }
 
 raiseShield() {
@@ -171,7 +170,6 @@ raiseShield() {
         llSetStatus(STATUS_PHANTOM, TRUE);
     }
     shieldStatus = TRUE;
-    llSetTimerEvent(5.0);
 }
 
 string getShieldSlurl() {
@@ -218,7 +216,6 @@ sidedShield() {
         }
     }
     linksetDataWrite(NULL_KEY, DOUBLE_LSD_KEY, (string)DOUBLE, "Double/Single Sided");
-    llSetTimerEvent(5.0);
 }
 
 stateShield() {
@@ -248,7 +245,6 @@ stateShield() {
             llOwnerSay(msg);
         }
     }
-    llSetTimerEvent(5.0);
 }
 
 string getPrimType() {
