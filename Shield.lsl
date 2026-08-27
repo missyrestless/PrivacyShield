@@ -26,10 +26,11 @@
 // 2026-Aug-17 Add texture menu management        //
 // 2026-Aug-18 Support for one and two sided      //
 // 2026-Aug-19 Use linkset datastore for config   //
+// 2026-Aug-27 Support for texturing all shields  //
 //                                                //
 ////////////////////////////////////////////////////
 
-string  VERSION = "1.1.3";
+string  VERSION = "1.1.4";
 
 integer ALL     = TRUE;      // Set to TRUE to effect all shields, FALSE for single shield
 integer DOUBLE  = FALSE;     // Set to TRUE for double sided shield, FALSE for single sided
@@ -63,11 +64,12 @@ float   def_size_x = -1.0;
 float   def_size_y = -1.0;
 vector  orig_size  = ZERO_VECTOR;
 vector  prim_size  = ZERO_VECTOR;
-vector  position;
 string  BLANK      = "5b53359e-59dd-d8a2-04c3-9e65134da47a";
+vector  curr_position;
 string  front_texture;
 string  back_texture;
 string  linksetValue;
+string  menuMessage;
 string  shape = "Box";
 
 // Linkset Data Keys
@@ -294,7 +296,6 @@ displayConfMenu() {
     llListenRemove(dialogHandle);
     dialogHandle = llListen(dialogChannel, "", tcher, "");
     list conf_menu = [];
-    string menuMessage;
 
     menuMessage = "\nTruth & Beauty Privacy Shield " + VERSION + "\n";
     if (GROUP) {
@@ -346,7 +347,6 @@ displayMainMenu() {
     llListenRemove(dialogHandle);
     dialogHandle = llListen(dialogChannel, "", tcher, "");
     list main_menu = [];
-    string menuMessage;
 
     menuMessage = "\nTruth & Beauty Privacy Shield " + VERSION;
     if (ALL) {
@@ -385,7 +385,6 @@ displaySizeMenu() {
     llListenRemove(dialogHandle);
     dialogHandle = llListen(dialogChannel, "", tcher, "");
     list size_menu = [];
-    string menuMessage;
 
     menuMessage = "\nTruth & Beauty Privacy Shield Resize Menu";
     menuMessage = "\nResize this shield only\n";
@@ -402,7 +401,6 @@ displayTextMenu() {
     integer total = llGetListLength(faces);
     list face_menu = [];
     list text_menu = [];
-    string menuMessage;
 
     llListenRemove(dialogHandle);
     dialogHandle = llListen(dialogChannel, "", tcher, "");
@@ -518,7 +516,7 @@ GetDatastoreValues() {
     //  Prim Position linkset data key
     linksetValue = llLinksetDataRead(POSITION_LSD_KEY);
     if (linksetValue != "") {
-        position = (vector)linksetValue;
+        curr_position = (vector)linksetValue;
     }
     // Original Prim Textures linkset data key
     linksetValue = llLinksetDataRead(ORIGTEXT_LSD_KEY);
@@ -567,7 +565,7 @@ SetDatastoreValues(key id) {
     // Prim Size linkset data key
     linksetDataWrite(id, SIZE_LSD_KEY, (string)prim_size, "Shield Size");
     //  Prim Position linkset data key
-    linksetDataWrite(id, POSITION_LSD_KEY, (string)position, "Shield Position");
+    linksetDataWrite(id, POSITION_LSD_KEY, (string)curr_position, "Shield Position");
     // Prim Textures linkset data key
     linksetDataWrite(id, TEXTURES_LSD_KEY, llList2CSV(texts), "Shield Textures");
     // Group access linkset data key
@@ -727,8 +725,8 @@ default {
     }
 
     moving_end() {
-        position = llGetPos();
-        linksetDataWrite(owner, POSITION_LSD_KEY, (string)position, "Shield Position");
+        curr_position = llGetPos();
+        linksetDataWrite(owner, POSITION_LSD_KEY, (string)curr_position, "Shield Position");
     }
 
     timer() {
@@ -833,10 +831,10 @@ default {
 
         linksetValue = llLinksetDataRead(POSITION_LSD_KEY);
         if (linksetValue != "") {
-            position = (vector)linksetValue;
-            llSetRegionPos(position);
+            curr_position = (vector)linksetValue;
+            llSetRegionPos(curr_position);
         } else {
-            position = llGetPos();
+            curr_position = llGetPos();
         }
         set_faces();
         origt = texts;
